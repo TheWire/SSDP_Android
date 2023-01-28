@@ -4,10 +4,13 @@ import android.content.Context
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiManager.MulticastLock
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -18,7 +21,7 @@ class SSDP(context: Context) {
     private val SSDP_PORT = 1900
     private val SSDP_ADDRESS = "239.255.255.250"
     private val LOCK_TAG = "SSDP-ANDROID"
-    private var cache = mutableMapOf<Int, SSDPService>()
+    private var cache = mutableSetOf<SSDPService>()
     private var lock: MulticastLock? = null
     private val socket = DatagramSocket()
 
@@ -28,7 +31,6 @@ class SSDP(context: Context) {
 //    private cache
 
     fun discover(duration: Int = 5): Flow<DiscoverMessage> = flow {
-
         val address = InetAddress.getByName(SSDP_ADDRESS)
 
         cache.clear()
@@ -46,11 +48,8 @@ class SSDP(context: Context) {
             val receivePacket = DatagramPacket(buffer, buffer.size, address, SSDP_PORT)
             try {
                 socket.receive(receivePacket)
-                val responseString = String(receivePacket.data, 0, receivePacket.length)
-                Log.d("SSDP", responseString)
-                parseServiceResponse(responseString)?.let { service ->
-                    if (cache[service.hashCode()] == null) {
-                        cache[service.hashCode()] = service
+                parseServiceResponse(receivePacket)?.let { service ->
+                    if (cache.add(service)) {
                         emit(DiscoverMessage.Message(service))
                     }
                 }
@@ -63,12 +62,13 @@ class SSDP(context: Context) {
         }
 
 
-    }.catch { e ->
-        emit(DiscoverMessage.Error(e.message ?: "unknown ssdp discover error"))
-    }
+    }.flowOn(Dispatchers.IO)
+        .catch { e ->
+            emit(DiscoverMessage.Error(e.message ?: "unknown ssdp discover error"))
+        }
 
     fun lockMulticast() {
-        if(lock == null) {
+        if (lock == null) {
             lock = wifiManager.createMulticastLock(LOCK_TAG)
         }
         lock!!.acquire()
@@ -79,24 +79,28 @@ class SSDP(context: Context) {
     }
 
     suspend fun probe(service: String = "ssdp:all", probeInterval: Int = 5) {
-        val address = InetAddress.getByName(SSDP_ADDRESS)
-        val newLine = "\r\n"
-        val discoverString = """
+        withContext(Dispatchers.IO) {
+            val address = InetAddress.getByName(SSDP_ADDRESS)
+            val newLine = "\r\n"
+            val discoverString = """
                 M-SEARCH * HTTP/1.1
-                HOST: $SSDP_ADDRESS:$SSDP_PORT
-                MAN: "ssdp:discover"
-                MX: 1
-                ST: $service$newLine
+                HOST:$SSDP_ADDRESS:$SSDP_PORT
+                MAN:"ssdp:discover"
+                MX:1
+                ST:$service$newLine
             """.trimIndent().toByteArray()
 
-        val packet = DatagramPacket(discoverString, discoverString.size, address, SSDP_PORT)
-        while (true) {
-            socket.send(packet)
-            delay(probeInterval.toLong() * 1000)
+            val packet = DatagramPacket(discoverString, discoverString.size, address, SSDP_PORT)
+            while (true) {
+                socket.send(packet)
+                delay(probeInterval.toLong() * 1000)
+            }
         }
     }
 
-    private fun parseServiceResponse(responseString: String): SSDPService? {
+    private fun parseServiceResponse(packet: DatagramPacket): SSDPService? {
+        val responseString = String(packet.data, 0, packet.length)
+//        Log.d("SSDP", responseString)
         val service = mutableMapOf<String, String>()
         responseString.split("\r\n").forEach { line ->
             val kv = line.split(":", limit = 2)
@@ -104,13 +108,15 @@ class SSDP(context: Context) {
             service[kv[0].uppercase()] = kv[1]
         }
         return SSDPService(
+            address = packet.address,
             responseString = responseString,
             service = service,
+            date = service["DATE"],
             host = service["HOST"],
             st = service["ST"],
             man = service["MAN"],
             mx = service["MX"],
-            cache = service["CACHE"],
+            cache = service["CACHE-CONTROL"],
             location = service["LOCATION"],
             opt = service["OPT"],
             nls_01 = service["01-NLS"],
@@ -119,6 +125,9 @@ class SSDP(context: Context) {
             server = service["SERVER"],
             x_user_agent = service["X-USER-AGENT"],
             usn = service["USN"],
+            ext = service["EXT"],
+            bootId = service["BOOTID.UPNP.ORG"],
+            configId = service["CONFIGID.UPNP.ORG"],
         )
     }
 
