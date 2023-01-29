@@ -3,7 +3,6 @@ package com.thewire.ssdp_android
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiManager.MulticastLock
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -21,7 +20,7 @@ class SSDP(context: Context) {
     private val SSDP_PORT = 1900
     private val SSDP_ADDRESS = "239.255.255.250"
     private val LOCK_TAG = "SSDP-ANDROID"
-    private var cache = mutableSetOf<SSDPService>()
+    private var cache = HashSet<SSDPService>()
     private var lock: MulticastLock? = null
     private val socket = DatagramSocket()
 
@@ -30,10 +29,14 @@ class SSDP(context: Context) {
 
 //    private cache
 
-    fun discover(probe: Boolean, service: String ="ssdp:all", duration: Int = 5): Flow<DiscoverMessage> = flow {
+    fun discover(
+        probe: Boolean,
+        service: String = "ssdp:all",
+        duration: Int = 5
+    ): Flow<DiscoverMessage> = flow {
         val address = InetAddress.getByName(SSDP_ADDRESS)
 
-        if(probe) {
+        if (probe) {
             singleProbe(service, address)
         }
 
@@ -95,12 +98,12 @@ class SSDP(context: Context) {
         val newLine = "\r\n"
         val discoverString = """
                 M-SEARCH * HTTP/1.1
-                HOST:$SSDP_ADDRESS:$SSDP_PORT
-                MAN:"ssdp:discover"
-                MX:5
-                ST:$service$newLine$newLine
+                HOST: $SSDP_ADDRESS:$SSDP_PORT
+                MAN: "ssdp:discover"
+                MX: 5
+                ST: $service$newLine$newLine
             """.trimIndent().toByteArray()
-        Log.d("SSDP", discoverString.decodeToString())
+//        Log.d("SSDP", discoverString.decodeToString())
         val packet = DatagramPacket(discoverString, discoverString.size, address, SSDP_PORT)
         socket.send(packet)
     }
