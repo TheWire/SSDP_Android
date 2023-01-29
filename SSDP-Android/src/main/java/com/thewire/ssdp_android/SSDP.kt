@@ -30,8 +30,12 @@ class SSDP(context: Context) {
 
 //    private cache
 
-    fun discover(duration: Int = 5): Flow<DiscoverMessage> = flow {
+    fun discover(probe: Boolean, service: String ="ssdp:all", duration: Int = 5): Flow<DiscoverMessage> = flow {
         val address = InetAddress.getByName(SSDP_ADDRESS)
+
+        if(probe) {
+            singleProbe(service, address)
+        }
 
         cache.clear()
 
@@ -55,7 +59,6 @@ class SSDP(context: Context) {
                 }
 
             } catch (e: SocketTimeoutException) {
-                Log.d("SSDP", "timeout")
             } //if timeout do nothing
 
             currentTime = System.currentTimeMillis()
@@ -81,21 +84,25 @@ class SSDP(context: Context) {
     suspend fun probe(service: String = "ssdp:all", probeInterval: Int = 5) {
         withContext(Dispatchers.IO) {
             val address = InetAddress.getByName(SSDP_ADDRESS)
-            val newLine = "\r\n"
-            val discoverString = """
-                M-SEARCH * HTTP/1.1
-                HOST:$SSDP_ADDRESS:$SSDP_PORT
-                MAN:"ssdp:discover"
-                MX:1
-                ST:$service$newLine
-            """.trimIndent().toByteArray()
-
-            val packet = DatagramPacket(discoverString, discoverString.size, address, SSDP_PORT)
             while (true) {
-                socket.send(packet)
+                singleProbe(service, address)
                 delay(probeInterval.toLong() * 1000)
             }
         }
+    }
+
+    private fun singleProbe(service: String, address: InetAddress) {
+        val newLine = "\r\n"
+        val discoverString = """
+                M-SEARCH * HTTP/1.1
+                HOST:$SSDP_ADDRESS:$SSDP_PORT
+                MAN:"ssdp:discover"
+                MX:5
+                ST:$service$newLine$newLine
+            """.trimIndent().toByteArray()
+        Log.d("SSDP", discoverString.decodeToString())
+        val packet = DatagramPacket(discoverString, discoverString.size, address, SSDP_PORT)
+        socket.send(packet)
     }
 
     private fun parseServiceResponse(packet: DatagramPacket): SSDPService? {

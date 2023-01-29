@@ -25,7 +25,7 @@ class SSDPNetworkDiscoverTest {
     fun ssdp_discover_should_emit_discovering_without_error() {
         // Context of the app under test.
         runBlocking {
-            val result = ssdp.discover(duration = 1).first()
+            val result = ssdp.discover(probe = false, duration = 1).first()
             assertEquals(DiscoverMessage.Discovering, result)
         }
     }
@@ -43,15 +43,34 @@ class SSDPNetworkDiscoverTest {
 
     @Test
     fun ssdp_discover_should_emit_some_services() {
-        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        val ssdp = SSDP(appContext)
+        var first = true
+        runBlocking {
+            ssdp.lockMulticast()
+            ssdp.discover(probe = true, duration = 5).collect { result ->
+                if (first) {
+                    Log.d("TEST", "first collect $result")
+                    assertEquals(DiscoverMessage.Discovering, result)
+                    first = false
+                } else {
+                    assertEquals(DiscoverMessage.Message::class, result::class)
+                    val message = (result as DiscoverMessage.Message)
+                    Log.d("TEST", "subsequent collect ${message.service.location}")
+                    Log.d("TEST", message.service.responseString)
+                }
+            }
+            ssdp.releaseMulticast()
+        }
+    }
+
+    @Test
+    fun ssdp_discover_should_emit_some_services_cont_probe() {
         var first = true
         runBlocking {
             ssdp.lockMulticast()
             val job = launch {
                 ssdp.probe()
             }
-            ssdp.discover(duration = 5).collect { result ->
+            ssdp.discover(probe = false, duration = 5).collect { result ->
                 if (first) {
                     Log.d("TEST", "first collect $result")
                     assertEquals(DiscoverMessage.Discovering, result)
