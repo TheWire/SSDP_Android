@@ -10,10 +10,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
-import java.net.DatagramPacket
-import java.net.DatagramSocket
-import java.net.InetAddress
-import java.net.SocketTimeoutException
+import java.net.*
 
 class SSDP(context: Context) {
 
@@ -22,7 +19,6 @@ class SSDP(context: Context) {
     private val LOCK_TAG = "SSDP-ANDROID"
     private var cache = HashSet<SSDPService>()
     private var lock: MulticastLock? = null
-    private val socket = DatagramSocket()
 
     private val wifiManager =
         context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
@@ -35,9 +31,10 @@ class SSDP(context: Context) {
         duration: Int = 5
     ): Flow<DiscoverMessage> = flow {
         val address = InetAddress.getByName(SSDP_ADDRESS)
-
+        val socket = MulticastSocket(InetSocketAddress("0.0.0.0", SSDP_PORT))
+        socket.joinGroup(address)
         if (probe) {
-            singleProbe(service, address)
+            singleProbe(service)
         }
 
         cache.clear()
@@ -66,8 +63,7 @@ class SSDP(context: Context) {
 
             currentTime = System.currentTimeMillis()
         }
-
-
+        socket.close()
     }.flowOn(Dispatchers.IO)
         .catch { e ->
             emit(DiscoverMessage.Error(e.message ?: "unknown ssdp discover error"))
@@ -86,31 +82,36 @@ class SSDP(context: Context) {
 
     suspend fun probe(service: String = "ssdp:all", probeInterval: Int = 5) {
         withContext(Dispatchers.IO) {
-            val address = InetAddress.getByName(SSDP_ADDRESS)
             while (true) {
-                singleProbe(service, address)
+                singleProbe(service)
                 delay(probeInterval.toLong() * 1000)
             }
         }
     }
 
-    private fun singleProbe(service: String, address: InetAddress) {
+    private fun singleProbe(service: String) {
         val newLine = "\r\n"
         val discoverString = """
                 M-SEARCH * HTTP/1.1
                 HOST: $SSDP_ADDRESS:$SSDP_PORT
                 MAN: "ssdp:discover"
-                MX: 5
+                MX:1
                 ST: $service$newLine$newLine
             """.trimIndent().toByteArray()
 //        Log.d("SSDP", discoverString.decodeToString())
+        val address = InetAddress.getByName(SSDP_ADDRESS)
+        val socket = MulticastSocket()
+        socket.joinGroup(address)
         val packet = DatagramPacket(discoverString, discoverString.size, address, SSDP_PORT)
         socket.send(packet)
+        socket.close()
     }
 
     private fun parseServiceResponse(packet: DatagramPacket): SSDPService? {
         val responseString = String(packet.data, 0, packet.length)
-//        Log.d("SSDP", responseString)
+        if (!Regex("""^(NOTIFY \* HTTP)/(1\.0|1\.1|2\.0)\r\n""", RegexOption.IGNORE_CASE)
+                .containsMatchIn(responseString)
+        ) return null
         val service = mutableMapOf<String, String>()
         responseString.split("\r\n").forEach { line ->
             val kv = line.split(":", limit = 2)

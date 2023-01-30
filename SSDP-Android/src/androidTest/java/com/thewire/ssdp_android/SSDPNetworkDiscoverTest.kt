@@ -55,7 +55,7 @@ class SSDPNetworkDiscoverTest {
                     assertEquals(DiscoverMessage.Message::class, result::class)
                     val message = (result as DiscoverMessage.Message)
                     Log.d("TEST", "subsequent collect ${message.service.location}")
-                    Log.d("TEST", message.service.responseString)
+//                    Log.d("TEST", message.service.responseString)
                 }
             }
             ssdp.releaseMulticast()
@@ -64,16 +64,13 @@ class SSDPNetworkDiscoverTest {
 
     @Test
     fun ssdp_discover_should_emit_some_services_cont_probe() {
-//        "urn:schemas-upnp-org:service:ConnectionManager:1"
-        //"urn:schemas-cipa-jp:device:DPSPrinter:1"
-        // "urn:schemas-wifialliance-org:service:WFAWLANConfig:1"
         var first = true
         runBlocking {
             ssdp.lockMulticast()
             val job = launch {
                 ssdp.probe()
             }
-            ssdp.discover(probe = false, duration = 60).collect { result ->
+            ssdp.discover(probe = false, duration = 20).collect { result ->
                 if (first) {
                     Log.d("TEST", "first collect $result")
                     assertEquals(DiscoverMessage.Discovering, result)
@@ -86,6 +83,21 @@ class SSDPNetworkDiscoverTest {
                 }
             }
             job.cancel()
+            ssdp.releaseMulticast()
+        }
+    }
+
+    @Test
+    fun ssdp_discover_should_emit_unique_results() {
+        val results =  mutableSetOf<String>()
+        runBlocking {
+            ssdp.lockMulticast()
+            ssdp.discover(probe = true, duration = 120).collect { result ->
+                if (result::class == DiscoverMessage.Message::class) {
+                    val message = (result as DiscoverMessage.Message)
+                    assertTrue(results.add(message.service.responseString))
+                }
+            }
             ssdp.releaseMulticast()
         }
     }
