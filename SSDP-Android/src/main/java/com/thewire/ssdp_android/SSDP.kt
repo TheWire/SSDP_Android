@@ -97,7 +97,7 @@ class SSDP(context: Context) {
                 MAN: "ssdp:discover"
                 MX:1
                 ST: $service$newLine$newLine
-            """.trimIndent().toByteArray()
+            """.trimIndent().replace("\n", "\r\n").toByteArray()
 //        Log.d("SSDP", discoverString.decodeToString())
         val address = InetAddress.getByName(SSDP_ADDRESS)
         val socket = MulticastSocket()
@@ -111,7 +111,10 @@ class SSDP(context: Context) {
         val responseString = String(packet.data, 0, packet.length)
         if (!Regex("""^(NOTIFY \* HTTP)/(1\.0|1\.1|2\.0)\r\n""", RegexOption.IGNORE_CASE)
                 .containsMatchIn(responseString)
-        ) return null
+        ) {
+            println(responseString)
+            return null
+        }
         val service = mutableMapOf<String, String>()
         responseString.split("\r\n").forEach { line ->
             val kv = line.split(":", limit = 2)

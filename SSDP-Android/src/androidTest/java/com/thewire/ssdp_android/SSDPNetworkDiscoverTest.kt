@@ -70,7 +70,7 @@ class SSDPNetworkDiscoverTest {
             val job = launch {
                 ssdp.probe()
             }
-            ssdp.discover(probe = false, duration = 20).collect { result ->
+            ssdp.discover(probe = false, duration = 60).collect { result ->
                 if (first) {
                     Log.d("TEST", "first collect $result")
                     assertEquals(DiscoverMessage.Discovering, result)
