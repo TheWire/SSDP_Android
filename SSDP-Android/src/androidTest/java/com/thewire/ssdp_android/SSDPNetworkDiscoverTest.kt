@@ -78,7 +78,10 @@ class SSDPNetworkDiscoverTest {
                 } else {
                     assertEquals(DiscoverMessage.Message::class, result::class)
                     val message = (result as DiscoverMessage.Message)
-                    Log.d("TEST", "subsequent collect ${message.service.location}")
+                    Log.d(
+                        "TEST",
+                        "subsequent collect ${message.service.host} ${message.service.location}"
+                    )
 //                    Log.d("TEST", message.service.responseString)
                 }
             }
@@ -89,7 +92,7 @@ class SSDPNetworkDiscoverTest {
 
     @Test
     fun ssdp_discover_should_emit_unique_results() {
-        val results =  mutableSetOf<String>()
+        val results = mutableSetOf<String>()
         runBlocking {
             ssdp.lockMulticast()
             ssdp.discover(probe = true, duration = 120).collect { result ->
