@@ -112,7 +112,6 @@ class SSDP(context: Context) {
         if (!Regex("""^(NOTIFY \* HTTP)/(1\.0|1\.1|2\.0)\r\n""", RegexOption.IGNORE_CASE)
                 .containsMatchIn(responseString)
         ) {
-            println(responseString)
             return null
         }
         val service = mutableMapOf<String, String>()
