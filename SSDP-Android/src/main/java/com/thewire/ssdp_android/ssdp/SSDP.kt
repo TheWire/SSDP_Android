@@ -1,8 +1,10 @@
-package com.thewire.ssdp_android
+package com.thewire.ssdp_android.ssdp
 
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiManager.MulticastLock
+import com.thewire.ssdp_android.model.SSDPService
+import com.thewire.ssdp_android.model.DiscoverMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow

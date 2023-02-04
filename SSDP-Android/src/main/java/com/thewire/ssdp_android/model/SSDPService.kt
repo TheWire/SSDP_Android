@@ -1,4 +1,4 @@
-package com.thewire.ssdp_android
+package com.thewire.ssdp_android.model
 
 import java.net.InetAddress
 import java.util.*

@@ -1,4 +1,4 @@
-package com.thewire.ssdp_android
+package com.thewire.ssdp_android.model
 
 sealed class DiscoverMessage {
     data class Message(val service: SSDPService): DiscoverMessage()
