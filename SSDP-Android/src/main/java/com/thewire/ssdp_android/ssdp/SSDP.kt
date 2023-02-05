@@ -5,6 +5,7 @@ import android.net.wifi.WifiManager
 import android.net.wifi.WifiManager.MulticastLock
 import com.thewire.ssdp_android.model.SSDPService
 import com.thewire.ssdp_android.model.DiscoverMessage
+import com.thewire.ssdp_android.network.SSDPRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -14,7 +15,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.net.*
 
-class SSDP(context: Context) {
+class SSDP(context: Context, val ssdpRepository: SSDPRepository? = null) {
 
     private val SSDP_PORT = 1900
     private val SSDP_ADDRESS = "239.255.255.250"
@@ -56,6 +57,9 @@ class SSDP(context: Context) {
                 socket.receive(receivePacket)
                 parseServiceResponse(receivePacket)?.let { service ->
                     if (cache.add(service)) {
+                        if (ssdpRepository != null && service.location != null) {
+                            service.getProfile(ssdpRepository)
+                        }
                         emit(DiscoverMessage.Message(service))
                     }
                 }

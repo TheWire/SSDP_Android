@@ -3,6 +3,7 @@ package com.thewire.ssdp_android.model
 class SSDPDevice private constructor(
     val X_deviceCategory: String?,
     val deviceType: String?,
+    val friendlyName: String?,
     val manufacturer: String?,
     val modelName: String?,
     val modelURL: String?,
@@ -13,6 +14,7 @@ class SSDPDevice private constructor(
     data class Builder(
         var X_deviceCategory: String? = null,
         var deviceType: String? = null,
+        var friendlyName: String? = null,
         var manufacturer: String? = null,
         var modelName: String? = null,
         var modelURL: String? = null,
@@ -25,6 +27,9 @@ class SSDPDevice private constructor(
         }
         fun deviceType(deviceType: String) = apply {
             this.deviceType = deviceType
+        }
+        fun friendlyName(friendlyName: String) = apply {
+            this.friendlyName = friendlyName
         }
         fun manufacturer(manufacturer: String) = apply {
             this.manufacturer = manufacturer
@@ -47,6 +52,7 @@ class SSDPDevice private constructor(
         fun build() = SSDPDevice(
             X_deviceCategory,
             deviceType,
+            friendlyName,
             manufacturer,
             modelName,
             modelURL,

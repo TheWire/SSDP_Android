@@ -1,5 +1,6 @@
 package com.thewire.ssdp_android.model
 
+import com.thewire.ssdp_android.network.SSDPRepository
 import java.net.InetAddress
 import java.util.*
 
@@ -25,6 +26,21 @@ class SSDPService(
     val bootId: String? = null,
     val configId: String? = null,
 ) {
+    var deviceProfile: DeviceProfile? = null
+        get() = field
+        private set(value) {
+            field = value
+        }
+
+    suspend fun getProfile(repository: SSDPRepository) {
+        if(location != null) {
+            deviceProfile = repository.getDeviceProfile(location)
+        } else {
+            throw(Exception("location is null"))
+        }
+    }
+
+
     override fun hashCode(): Int {
         return Objects.hash(
             address, host, st, man, mx, cache, opt, nls_01, nt, nts,
