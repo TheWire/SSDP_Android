@@ -3,6 +3,7 @@ package com.thewire.ssdp_android.ssdp
 import android.content.Context
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiManager.MulticastLock
+import android.util.Log
 import com.thewire.ssdp_android.model.SSDPService
 import com.thewire.ssdp_android.model.DiscoverMessage
 import com.thewire.ssdp_android.network.SSDPRepository
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.net.*
 
+internal const val TAG = "SSDP"
 class SSDP(context: Context, val ssdpRepository: SSDPRepository? = null) {
 
     private val SSDP_PORT = 1900
@@ -58,7 +60,11 @@ class SSDP(context: Context, val ssdpRepository: SSDPRepository? = null) {
                 parseServiceResponse(receivePacket)?.let { service ->
                     if (cache.add(service)) {
                         if (ssdpRepository != null && service.location != null) {
-                            service.getProfile(ssdpRepository)
+                            try {
+                                service.getProfile(ssdpRepository)
+                            } catch(e: Exception) {
+                                Log.e(TAG, "unable to get/invalid device profile: $e")
+                            }
                         }
                         emit(DiscoverMessage.Message(service))
                     }

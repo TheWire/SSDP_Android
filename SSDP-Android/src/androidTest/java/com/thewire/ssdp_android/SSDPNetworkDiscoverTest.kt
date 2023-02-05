@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.first
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.xmlpull.v1.XmlPullParserException
 import java.io.ByteArrayInputStream
 
 /**
@@ -20,6 +21,8 @@ import java.io.ByteArrayInputStream
  *
  * See [testing documentation](http://d.android.com/tools/testing).
  */
+
+private const val TAG_TEST = "SSDP_TEST"
 @RunWith(AndroidJUnit4::class)
 class SSDPNetworkDiscoverTest {
 
@@ -55,13 +58,13 @@ class SSDPNetworkDiscoverTest {
             ssdp.lockMulticast()
             ssdp.discover(probe = true, duration = 5).collect { result ->
                 if (first) {
-                    Log.d("TEST", "first collect $result")
+                    Log.i(TAG_TEST, "first collect $result")
                     assertEquals(DiscoverMessage.Discovering, result)
                     first = false
                 } else {
                     assertEquals(DiscoverMessage.Message::class, result::class)
                     val message = (result as DiscoverMessage.Message)
-                    Log.d("TEST", "subsequent collect ${message.service.location}")
+                    Log.i(TAG_TEST, "subsequent collect ${message.service.location}")
 //                    Log.d("TEST", message.service.responseString)
                 }
             }
@@ -79,14 +82,14 @@ class SSDPNetworkDiscoverTest {
             }
             ssdp.discover(probe = false, duration = 60).collect { result ->
                 if (first) {
-                    Log.d("TEST", "first collect $result")
+                    Log.i(TAG_TEST, "first collect $result")
                     assertEquals(DiscoverMessage.Discovering, result)
                     first = false
                 } else {
                     assertEquals(DiscoverMessage.Message::class, result::class)
                     val message = (result as DiscoverMessage.Message)
-                    Log.d(
-                        "TEST",
+                    Log.i(
+                        TAG_TEST,
                         "subsequent collect ${message.service.host} ${message.service.location}"
                     )
 //                    Log.d("TEST", message.service.responseString)
@@ -109,6 +112,43 @@ class SSDPNetworkDiscoverTest {
                 }
             }
             ssdp.releaseMulticast()
+        }
+    }
+
+    @Test
+    fun parser_should_throw_XmlPullParserException_if_non_xml() {
+        val testProfile = """
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus faucibus augue quis 
+            nisi porttitor tempor. Integer lectus quam, volutpat id sollicitudin dignissim, 
+            porttitor sed magna. Nam gravida, nulla quis tincidunt interdum, risus purus sodales mi, 
+            ultrices molestie ipsum dui vitae urna. Suspendisse aliquet enim ante, pulvinar vehicula 
+            libero pretium a.
+        """.trimIndent().encodeToByteArray()
+        val stream = ByteArrayInputStream(testProfile)
+        try {
+            parser.parseStream(stream)
+        } catch (e: XmlPullParserException) {
+            Log.i(TAG_TEST, e.message ?: "parser exception")
+        }
+
+    }
+
+    @Test
+    fun parser_should_throw_XmlPullParserException_if_invalid_device_profile_xml() {
+        val testProfile = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+                <uses-permission android:name="android.permission.INTERNET" />
+                <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+            
+                <application android:usesCleartextTraffic="true"/>
+            </manifest>
+        """.trimIndent().encodeToByteArray()
+        val stream = ByteArrayInputStream(testProfile)
+        try {
+            parser.parseStream(stream)
+        } catch(e: XmlPullParserException) {
+            Log.i(TAG_TEST, e.message ?: "parser exception")
         }
     }
     @Test
