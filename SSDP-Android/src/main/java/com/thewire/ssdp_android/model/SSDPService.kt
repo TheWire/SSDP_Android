@@ -1,6 +1,6 @@
 package com.thewire.ssdp_android.model
 
-import com.thewire.ssdp_android.network.SSDPRepository
+import com.thewire.ssdp_android.network.SSDPDeviceHTTPService
 import java.net.InetAddress
 import java.util.*
 
@@ -32,7 +32,7 @@ class SSDPService(
             field = value
         }
 
-    suspend fun getProfile(repository: SSDPRepository) {
+    suspend fun getProfile(repository: SSDPDeviceHTTPService) {
         if(location != null) {
             deviceProfile = repository.getDeviceProfile(location)
         } else {

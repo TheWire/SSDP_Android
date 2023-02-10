@@ -8,7 +8,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 
-class SSDPRepository() {
+class SSDPDeviceHTTPService() {
 
     private val parser = DeviceProfileXmlParser()
     suspend fun getDeviceProfile(location: String): DeviceProfile {

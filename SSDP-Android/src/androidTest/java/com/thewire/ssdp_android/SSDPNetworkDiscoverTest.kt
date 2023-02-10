@@ -6,7 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.thewire.ssdp_android.model.DiscoverMessage
 import com.thewire.ssdp_android.network.DeviceProfileXmlParser
-import com.thewire.ssdp_android.network.SSDPRepository
+import com.thewire.ssdp_android.network.SSDPDeviceHTTPService
 import com.thewire.ssdp_android.ssdp.SSDP
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
@@ -23,11 +23,12 @@ import java.io.ByteArrayInputStream
  */
 
 private const val TAG_TEST = "SSDP_TEST"
+
 @RunWith(AndroidJUnit4::class)
 class SSDPNetworkDiscoverTest {
 
     private val appContext: Context = InstrumentationRegistry.getInstrumentation().targetContext
-    private val repository = SSDPRepository()
+    private val repository = SSDPDeviceHTTPService()
     private val ssdp = SSDP(appContext, repository)
     private val parser = DeviceProfileXmlParser()
 
@@ -147,10 +148,11 @@ class SSDPNetworkDiscoverTest {
         val stream = ByteArrayInputStream(testProfile)
         try {
             parser.parseStream(stream)
-        } catch(e: XmlPullParserException) {
+        } catch (e: XmlPullParserException) {
             Log.i(TAG_TEST, e.message ?: "parser exception")
         }
     }
+
     @Test
     fun parser_should_parse_xml_correctly() {
         val testProfile = """
@@ -179,7 +181,10 @@ class SSDPNetworkDiscoverTest {
         assertEquals("0", device.specVersion?.second)
         assertEquals("uuid:a7387a40-2402-11ed-861d-0242ac120002", device.device?.UDN)
         assertEquals("Storage.NAS", device.device?.X_deviceCategory)
-        assertEquals("urn:schemas-upnp-org:device:networkstoragedevice:1", device.device?.deviceType)
+        assertEquals(
+            "urn:schemas-upnp-org:device:networkstoragedevice:1",
+            device.device?.deviceType
+        )
         assertEquals("My Device", device.device?.friendlyName)
         assertEquals("Generic Manufacturer", device.device?.manufacturer)
         assertEquals("Device MK1", device.device?.modelName)
@@ -187,6 +192,107 @@ class SSDPNetworkDiscoverTest {
         assertEquals("1", device.device?.modelNumber)
         assertEquals("01:02:03:04:05:06", device.device?.serialNumber)
         assertEquals("http://192.168.0.250", device.URLBase)
+    }
+
+    @Test
+    fun parser_should_parse_more_complex_xml_without_error() {
+        val testProfile = """
+            <root configId="1234">
+        <specVersion>
+        <major>1</major>
+        <minor>0</minor>
+        </specVersion>
+        <device>
+        <deviceType>
+                urn:schemas-upnp-org:device:InternetGatewayDevice:1
+        </deviceType>
+        <friendlyName>My Device</friendlyName>
+        <manufacturer>Computer Inc.</manufacturer>
+        <manufacturerURL>http://www.example.com/</manufacturerURL>
+        <modelDescription>Description of device</modelDescription>
+        <modelName>Example Model Name</modelName>
+        <modelNumber>1.0.0.1</modelNumber>
+        <modelURL>http://www.example.com/</modelURL>
+        <serialNumber>01:d2:c3:c4:e5:96</serialNumber>
+        <UDN>uuid:1234567890</UDN>
+        <serviceList>
+        <service>
+        <serviceType>urn:schemas-upnp-org:service:Layer3Forwarding:1</serviceType>
+        <serviceId>urn:upnp-org:serviceId:Layer3Forwarding1</serviceId>
+        <controlURL>/ctl/F</controlURL>
+        <eventSubURL>/evt/F</eventSubURL>
+        <SCPDURL>/f.xml</SCPDURL>
+        </service>
+        <service>
+        <serviceType>urn:schemas-upnp-org:service:1</serviceType>
+        <serviceId>urn:upnp-org:serviceId:service1</serviceId>
+        <controlURL>/ctl/1</controlURL>
+        <eventSubURL>/evt/1</eventSubURL>
+        <SCPDURL>/sd.xml</SCPDURL>
+        </service>
+        </serviceList>
+        <deviceList>
+        <device>
+        <deviceType>urn:schemas-upnp-org:device:WANDevice:1</deviceType>
+        <friendlyName>WANDevice</friendlyName>
+        <manufacturer>MiniUPnP</manufacturer>
+        <manufacturerURL>http://example.com/</manufacturerURL>
+        <modelDescription>WAN Device</modelDescription>
+        <modelName>WAN Device</modelName>
+        <modelNumber>123456</modelNumber>
+        <modelURL>http://example.com/</modelURL>
+        <serialNumber>01:d2:c3:c4:e5:96</serialNumber>
+        <UDN>uuid:1234567890</UDN>
+        <UPC>000000000000</UPC>
+        <serviceList>
+        <service>
+        <serviceType>
+                urn:schemas-upnp-org:service:WANCommonInterfaceConfig:1
+        </serviceType>
+        <serviceId>urn:upnp-org:serviceId:WANCommonIFC1</serviceId>
+        <controlURL>/ctl/x</controlURL>
+        <eventSubURL>/evt/x</eventSubURL>
+        <SCPDURL>/g.xml</SCPDURL>
+        </service>
+        </serviceList>
+        <deviceList>
+        <device>
+        <deviceType>urn:schemas-upnp-org:device:WANConnectionDevice:1</deviceType>
+        <friendlyName>WANConnectionDevice</friendlyName>
+        <manufacturer>MiniUPnP</manufacturer>
+        <manufacturerURL>http://example.com/</manufacturerURL>
+        <modelDescription>MiniUPnP daemon</modelDescription>
+        <modelName>MiniUPnPd</modelName>
+        <modelNumber>123456</modelNumber>
+        <modelURL>http://miniupnp.free.fr/</modelURL>
+        <serialNumber>01:d2:c3:c4:e5:96</serialNumber>
+        <UDN>uuid:1234567890</UDN>
+        <UPC>000000000000</UPC>
+        <serviceList>
+        <service>
+        <serviceType>urn:schemas-upnp-org:service:WANIPConnection:1</serviceType>
+        <serviceId>urn:upnp-org:serviceId:WANIPConn1</serviceId>
+        <controlURL>/ctl/c</controlURL>
+        <eventSubURL>/evt/c</eventSubURL>
+        <SCPDURL>/n.xml</SCPDURL>
+        </service>
+        </serviceList>
+        </device>
+        </deviceList>
+        </device>
+        </deviceList>
+        <presentationURL>http://192.168.0.1:80/</presentationURL>
+        </device>
+        </root>
+        """.trimIndent().encodeToByteArray()
+        val stream = ByteArrayInputStream(testProfile)
+        val device = parser.parseStream(stream)
+        assertEquals("My Device", device.device?.friendlyName)
+        assertEquals("1.0.0.1", device.device?.modelNumber)
+        assertEquals("Example Model Name", device.device?.modelName)
+        assertEquals("http://192.168.0.1:80/", device.device?.presentationURL)
+        assertEquals("MiniUPnP", device.device?.manufacturer)
+
     }
 
     @Test
@@ -198,7 +304,7 @@ class SSDPNetworkDiscoverTest {
                 if (first) {
                     first = false
                 } else {
-                    if(result::class == DiscoverMessage.Error::class) {
+                    if (result::class == DiscoverMessage.Error::class) {
                         val error = (result as DiscoverMessage.Error)
                         Log.d("TEST", "error $error")
                     }

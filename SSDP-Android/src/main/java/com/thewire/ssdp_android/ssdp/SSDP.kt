@@ -2,11 +2,10 @@ package com.thewire.ssdp_android.ssdp
 
 import android.content.Context
 import android.net.wifi.WifiManager
-import android.net.wifi.WifiManager.MulticastLock
 import android.util.Log
 import com.thewire.ssdp_android.model.SSDPService
 import com.thewire.ssdp_android.model.DiscoverMessage
-import com.thewire.ssdp_android.network.SSDPRepository
+import com.thewire.ssdp_android.network.SSDPDeviceHTTPService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -17,18 +16,15 @@ import kotlinx.coroutines.withContext
 import java.net.*
 
 internal const val TAG = "SSDP"
-class SSDP(context: Context, val ssdpRepository: SSDPRepository? = null) {
+class SSDP(context: Context, private val ssdpDeviceHTTPService: SSDPDeviceHTTPService? = null) {
 
     private val SSDP_PORT = 1900
     private val SSDP_ADDRESS = "239.255.255.250"
     private val LOCK_TAG = "SSDP-ANDROID"
     private var cache = HashSet<SSDPService>()
-    private var lock: MulticastLock? = null
-
     private val wifiManager =
         context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-
-//    private cache
+    private var lock = wifiManager.createMulticastLock(LOCK_TAG)
 
     fun discover(
         probe: Boolean,
@@ -59,9 +55,9 @@ class SSDP(context: Context, val ssdpRepository: SSDPRepository? = null) {
                 socket.receive(receivePacket)
                 parseServiceResponse(receivePacket)?.let { service ->
                     if (cache.add(service)) {
-                        if (ssdpRepository != null && service.location != null) {
+                        if (ssdpDeviceHTTPService != null && service.location != null) {
                             try {
-                                service.getProfile(ssdpRepository)
+                                service.getProfile(ssdpDeviceHTTPService)
                             } catch(e: Exception) {
                                 Log.e(TAG, "unable to get/invalid device profile: $e")
                             }
@@ -82,14 +78,11 @@ class SSDP(context: Context, val ssdpRepository: SSDPRepository? = null) {
         }
 
     fun lockMulticast() {
-        if (lock == null) {
-            lock = wifiManager.createMulticastLock(LOCK_TAG)
-        }
-        lock!!.acquire()
+        lock.acquire()
     }
 
     fun releaseMulticast() {
-        lock?.release()
+        if(lock.isHeld) lock.release()
     }
 
     suspend fun probe(service: String = "ssdp:all", probeInterval: Int = 5) {
