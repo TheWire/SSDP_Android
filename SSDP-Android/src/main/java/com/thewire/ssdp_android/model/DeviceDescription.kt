@@ -8,15 +8,16 @@ class DeviceDescription private constructor(
     val manufacturerURL: String?,
     val modelName: String?,
     val modelNumber: String?,
+    val modelDescription: String?,
     val modelURL: String?,
     val serialNumber: String?,
     val UDN: String?,
     val UPC: String?,
     val presentationURL: String?,
-    val service: ServiceInformation? = null,
-    val serviceList: List<ServiceInformation>? = null,
-    val device: DeviceDescription? = null,
-    val deviceList: List<DeviceDescription>? = null
+    val service: ServiceInformation?,
+    val serviceList: List<ServiceInformation>?,
+    val device: DeviceDescription?,
+    val deviceList: List<DeviceDescription>?
 ) {
     data class Builder(
         var X_deviceCategory: String? = null,
@@ -26,6 +27,7 @@ class DeviceDescription private constructor(
         var manufacturerURL: String? = null,
         var modelName: String? = null,
         var modelNumber: String? = null,
+        var modelDescription: String? = null,
         var modelURL: String? = null,
         var serialNumber: String? = null,
         var UDN: String? = null,
@@ -56,6 +58,9 @@ class DeviceDescription private constructor(
         }
         fun modelNumber(modelNumber: String) = apply {
             this.modelNumber = modelNumber
+        }
+        fun modelDescription(modelDescription: String) = apply {
+            this.modelDescription = modelDescription
         }
         fun modelURL(modelURL: String) = apply {
             this.modelURL = modelURL
@@ -92,6 +97,7 @@ class DeviceDescription private constructor(
             manufacturerURL = manufacturerURL,
             modelName = modelName,
             modelNumber = modelNumber,
+            modelDescription = modelDescription,
             modelURL = modelURL,
             serialNumber = serialNumber,
             UDN = UDN,

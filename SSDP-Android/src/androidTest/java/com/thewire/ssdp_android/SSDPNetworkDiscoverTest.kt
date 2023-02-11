@@ -290,8 +290,9 @@ class SSDPNetworkDiscoverTest {
         assertEquals("My Device", device.device?.friendlyName)
         assertEquals("1.0.0.1", device.device?.modelNumber)
         assertEquals("Example Model Name", device.device?.modelName)
+        assertEquals("Description of device", device.device?.modelDescription)
         assertEquals("http://192.168.0.1:80/", device.device?.presentationURL)
-        assertEquals("MiniUPnP", device.device?.manufacturer)
+        assertEquals("Computer Inc.", device.device?.manufacturer)
 
     }
 

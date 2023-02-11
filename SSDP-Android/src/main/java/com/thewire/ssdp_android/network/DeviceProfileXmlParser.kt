@@ -26,7 +26,6 @@ class DeviceProfileXmlParser {
             if (parser.eventType != XmlPullParser.START_TAG) {
                 continue
             }
-            println("parse ${parser.name}")
             when (parser.name) {
                 "device" -> deviceProfile.device(parseDevice(parser))
                 "deviceList" -> deviceProfile.deviceList(parseDeviceList(parser))
@@ -119,15 +118,26 @@ class DeviceProfileXmlParser {
         return list
     }
 
+    private fun skip(parser: XmlPullParser) {
+        if(parser.eventType != XmlPullParser.START_TAG) {
+            throw IllegalStateException()
+        }
+        var depth = 1
+        while(depth != 0) {
+            when(parser.next()) {
+                XmlPullParser.END_TAG -> depth--
+                XmlPullParser.START_TAG -> depth++
+            }
+        }
+    }
+
     private fun parseDevice(parser: XmlPullParser): DeviceDescription {
         parser.require(XmlPullParser.START_TAG, null, "device")
         val device = DeviceDescription.Builder()
-        println(XmlPullParser.END_TAG)
         while (parser.next() != XmlPullParser.END_TAG) {
             if (parser.eventType != XmlPullParser.START_TAG) {
                 continue
             }
-            println("parse device ${parser.name}")
             when (parser.name) {
                 "pnpx:X_deviceCategory" -> device.X_deviceCategory(parseElement(parser, "pnpx:X_deviceCategory"))
                 "deviceType" -> device.deviceType(parseElement(parser, "deviceType"))
@@ -137,6 +147,7 @@ class DeviceProfileXmlParser {
                 "modelName" -> device.modelName(parseElement(parser, "modelName"))
                 "modelURL" -> device.modelURL(parseElement(parser, "modelURL"))
                 "modelNumber" -> device.modelNumber(parseElement(parser, "modelNumber"))
+                "modelDescription" -> device.modelDescription(parseElement(parser, "modelDescription"))
                 "serialNumber" -> device.serialNumber(parseElement(parser, "serialNumber"))
                 "UDN" -> device.UDN(parseElement(parser, "UDN"))
                 "UPC" -> device.UPC(parseElement(parser, "UPC"))
@@ -145,6 +156,7 @@ class DeviceProfileXmlParser {
                 "deviceList" -> device.deviceList(parseDeviceList(parser))
                 "service" -> device.service(parseService(parser))
                 "serviceList" -> device.serviceList(parseServiceList(parser))
+                else -> skip(parser)
             }
         }
         return device.build()
