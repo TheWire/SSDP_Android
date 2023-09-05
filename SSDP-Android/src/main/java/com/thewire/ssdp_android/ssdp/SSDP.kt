@@ -123,7 +123,7 @@ class SSDP(context: Context, private val ssdpDeviceHTTPService: SSDPDeviceHTTPSe
         responseString.split("\r\n").forEach { line ->
             val kv = line.split(":", limit = 2)
             if (kv.size < 2) return@forEach
-            service[kv[0].uppercase()] = kv[1]
+            service[kv[0].uppercase()] = kv[1].trim()
         }
         return SSDPService(
             address = packet.address,
